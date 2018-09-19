@@ -1,0 +1,121 @@
+#!/usr/bin/env python
+#-*- coding:utf-8 -*-
+
+import json
+import argparse
+import logging
+import fileinput
+import getpass
+from functools import partial
+import sys
+import os
+reload(sys)
+sys.setdefaultencoding('utf8')
+
+def getConfig(file):
+    result = ""
+    with open(file, 'r') as fh:
+        try:
+            result = json.load(fh)
+        except ValueError:
+            result = []
+
+    return result;
+
+def getFormat(fmt, cfg):
+    result = ""
+    if ("host" == fmt):
+        result = "{host}"
+    elif ("port" == fmt):
+        result = "{port}"
+    elif ("user" == fmt):
+        result = "{user}"
+    elif ("password" == fmt):
+        result = "{password}"
+    elif ("database" == fmt):
+        result = "{database}"
+    elif ("mysql" == fmt):
+        result = "-h{host} -P{port} -u{user} -p{password}"
+        if (cfg.get("database")):
+            result = " ".join([result, "{database}"])
+    elif ("ptdsn" == fmt):
+        result = "h={host},P={port},u={user},p={password}"
+        if (cfg.get("database")):
+            result = ",".join([result, "D={database}"])
+    elif ("mysqldiff" == fmt):
+        result = "{user}:{password}@{host}:{port}"
+    elif ("rediscli" == fmt):
+        result = "-h {host} -p {port} -a {password}"
+    elif ("ftp" == fmt):
+        result = "ftp://{user}:{password}@{host}:{port}"
+    elif ("list" == fmt):
+        result = "{key:<20} -- {user}@{host}:{port}"
+        if (cfg.get("database")):
+            result = "/".join([result, "{database}"])
+    else:
+        result = fmt
+    return result
+
+def getConfigItem(config, key):
+    cfg = config.get(key);
+    if not cfg:
+        return None
+    cfg["key"]  = key
+    return cfg
+
+def printList(config, fmttype):
+    for keyname in config.keys():
+        cfg = getConfigItem(config, keyname)
+        fmt = getFormat(fmttype or "list", cfg)
+        print(fmt.format(**cfg))
+
+def main():
+
+    parser = argparse.ArgumentParser()
+    #parser.add_argument("-v", "--verbose", action="store_true", default=False,
+    #                    help="显示详细日志")
+    defaultdir = '/'.join(['/home', getpass.getuser(), '.sd-config'])
+    defaultfile = '/'.join([defaultdir, 'config.json'])
+    parser.add_argument("-f", "--file", action="append",
+                        default=defaultfile,
+                        help="配置文件默认~/.sd-config/config.json")
+    parser.add_argument("--fmt",
+                        choices=["host","port","user","pass","database",
+                                 "mysql","ptdsn","mysqldiff", "ftp", "custome"],
+                        help="格式的类型,默认mysql")
+    parser.add_argument("--cfmt", default=None,
+                        help="格式的类型,默认mysql")
+    parser.add_argument("-l", "--list", action="store_true",
+                        help="输出所有的配置列表")
+    parser.add_argument("key", nargs="?",
+                        help="配置的标识")
+
+    args = parser.parse_args()
+    cfile = args.file
+    if not os.path.exists(cfile) and cfile == defaultfile:
+        if not os.path.exists(defaultdir):
+            os.makedirs(defaultdir)
+        open(cfile,"w+").close()
+
+    config = getConfig(cfile)
+    _format =  args.cfmt if args.fmt == "custome" else args.fmt
+
+    if (args.list):
+        printList(config, _format)
+        return
+
+    if not args.key:
+        print("error message: 请输入配置标识(key)")
+        return
+
+    cfg = getConfigItem(config, args.key)
+    if not cfg:
+        print("error message: 找不到 key:{},请从-l参数的列表选择".format(args.key))
+        return
+
+    fmt = getFormat(_format or "mysql", cfg)
+    print(fmt.format(**cfg))
+
+
+if __name__ == "__main__":
+    main()
