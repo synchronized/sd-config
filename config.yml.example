@@ -1,0 +1,25 @@
+---
+
+test-mysql:
+    type: mysql
+    host: mysql-host
+    port: 3306
+    user: root
+    password: 123456
+    database: test1
+
+test-mongo:
+    type: mongo
+    host: mongo-host
+    port: 27017
+    user: mongouser
+    password: 123456
+    database: test
+    authenticationDatabase: admin
+
+test-ftp:
+    # type: ftp
+    host: ftp-host
+    port: 21
+    user: ftp-user
+    password: 123456

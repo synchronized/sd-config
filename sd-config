@@ -6,57 +6,95 @@ import argparse
 import logging
 import fileinput
 import getpass
-from functools import partial
+# from functools import partial
+import yaml
 import sys
 import os
 reload(sys)
 sys.setdefaultencoding('utf8')
 
-def getConfig(file):
-    result = ""
-    with open(file, 'r') as fh:
-        try:
-            result = json.load(fh)
-        except ValueError:
-            result = []
 
-    return result;
+def getConfig(filename):
+    f = open(filename)
+    dohicky = yaml.safe_load(f)
+    f.close()
+    return dohicky;
+
+def sdcf_format_host(cfg):
+    return "{host}"
+
+def sdcf_format_port(cfg):
+    return "{port}"
+
+def sdcf_format_user(cfg):
+    return "{user}"
+
+def sdcf_format_password(cfg):
+    return "{password}"
+
+def sdcf_format_database(cfg):
+    return "{database}"
+
+def sdcf_format_mysql(cfg):
+    result = "-h{host} -P{port} -u{user} -p{password}"
+    if (cfg.get("database")):
+        result = " ".join([result, "{database}"])
+    return result
+
+def sdcf_format_ptdsn(cfg):
+    result = "h={host},P={port},u={user},p={password}"
+    if (cfg.get("database")):
+        result = ",".join([result, "D={database}"])
+    return result
+
+def sdcf_format_mysqldiff(cfg):
+    return "{user}:{password}@{host}:{port}"
+
+def sdcf_format_rediscli(cfg):
+    return "-h {host} -p {port} -a {password}"
+
+def sdcf_format_mongo(cfg):
+    flist = ["--host {host}:{port}", " -u {user} -p {password}"]
+    if (cfg.get("database")):
+        flist.insert(1, "/{database}")
+    if (cfg.get("authenticationDatabase")):
+        flist.append(" --authenticationDatabase={authenticationDatabase}")
+    return "".join(flist)
+
+def sdcf_format_ftp(cfg):
+    return "ftp://{user}:{password}@{host}:{port}"
+
+def sdcf_format_list(cfg):
+    flist = ["{key:<25} -- ", "{user}@{host}:{port}"]
+    if (cfg.get("type")):
+        flist.insert(1, "[{type}]")
+    if (cfg.get("database")):
+        flist.append("/{database}")
+    return "".join(flist)
 
 def getFormat(fmt, cfg):
-    result = ""
-    if ("host" == fmt):
-        result = "{host}"
-    elif ("port" == fmt):
-        result = "{port}"
-    elif ("user" == fmt):
-        result = "{user}"
-    elif ("password" == fmt):
-        result = "{password}"
-    elif ("database" == fmt):
-        result = "{database}"
-    elif ("mysql" == fmt):
-        result = "-h{host} -P{port} -u{user} -p{password}"
-        if (cfg.get("database")):
-            result = " ".join([result, "{database}"])
-    elif ("ptdsn" == fmt):
-        result = "h={host},P={port},u={user},p={password}"
-        if (cfg.get("database")):
-            result = ",".join([result, "D={database}"])
-    elif ("mysqldiff" == fmt):
-        result = "{user}:{password}@{host}:{port}"
-    elif ("rediscli" == fmt):
-        result = "-h {host} -p {port} -a {password}"
-    elif ("ftp" == fmt):
-        result = "ftp://{user}:{password}@{host}:{port}"
-    elif ("list" == fmt):
-        result = "{key:<20} -- {user}@{host}:{port}"
-        if (cfg.get("database")):
-            result = "/".join([result, "{database}"])
-    else:
-        result = fmt
+    formatMap = {
+        "host": sdcf_format_host,
+        "port": sdcf_format_port,
+        "user": sdcf_format_user,
+        "password": sdcf_format_password,
+        "database": sdcf_format_database,
+        "mysql": sdcf_format_mysql,
+        "ptdsn": sdcf_format_ptdsn,
+        "mysqldiff": sdcf_format_mysqldiff,
+        "rediscli": sdcf_format_rediscli,
+        "mongo": sdcf_format_mongo,
+        "ftp": sdcf_format_ftp,
+        "list": sdcf_format_list,
+    }
+    result = fmt
+    if formatMap.has_key(fmt):
+        result = formatMap[fmt](cfg)
     return result
 
 def getConfigItem(config, key):
+    if not config:
+        return None
     cfg = config.get(key);
     if not cfg:
         return None
@@ -64,10 +102,29 @@ def getConfigItem(config, key):
     return cfg
 
 def printList(config, fmttype):
-    for keyname in config.keys():
-        cfg = getConfigItem(config, keyname)
-        fmt = getFormat(fmttype or "list", cfg)
-        print(fmt.format(**cfg))
+    if config:
+        for keyname in config.keys():
+            cfg = getConfigItem(config, keyname)
+            fmt = getFormat(fmttype or "list", cfg)
+            print(fmt.format(**cfg))
+
+def printListFormat():
+    choicesMap = {
+        "host": "item-ip",
+        "port": "item-器port",
+        "user": "item-器用户名",
+        "pass": "item-器密码",
+        "database": "item-数据库名(仅限mysql,mongo)",
+        "mysql": "mysql命令行链接信息: -h{host} -P{port} -u{user} -p{password} [{database}]",
+        "ptdsn": "percona-toolkit psd格式: h={host},P={port},u={user},p={password}[,D={database}]",
+        "mysqldiff": "mysql-utilities mysqldiff格式: {user}:{password}@{host}:{port}",
+        "redisclie": "redis终端客户端: -h {host} -p {port} -a {password}",
+        "mongo": "MongoDB shell: --host {host}:{port}[/{database}] [--authenticationDatabase={authenticationDatabase}]",
+        "ftp": "ftp链接链接字符串: ftp://{user}:{password}@{host}:{port}",
+    }
+
+    for key in choicesMap.keys():
+        print "{}: {}".format(key, choicesMap.get(key))
 
 def main():
 
@@ -75,16 +132,12 @@ def main():
     #parser.add_argument("-v", "--verbose", action="store_true", default=False,
     #                    help="显示详细日志")
     defaultdir = '/'.join(['/home', getpass.getuser(), '.sd-config'])
-    defaultfile = '/'.join([defaultdir, 'config.json'])
-    parser.add_argument("-f", "--file", action="append",
-                        default=defaultfile,
-                        help="配置文件默认~/.sd-config/config.json")
-    parser.add_argument("--fmt",
-                        choices=["host","port","user","pass","database",
-                                 "mysql","ptdsn","mysqldiff", "ftp", "custome"],
-                        help="格式的类型,默认mysql")
-    parser.add_argument("--cfmt", default=None,
-                        help="格式的类型,默认mysql")
+    defaultfile = '/'.join([defaultdir, 'config.yml'])
+    parser.add_argument("-f", "--file", default=defaultfile,
+                        help="配置文件默认:{}".format(defaultfile))
+    parser.add_argument("--fmt", help="格式的类型,默认mysql")
+    parser.add_argument("--list-fmt", action="store_true",
+                        help="输出支持的格式")
     parser.add_argument("-l", "--list", action="store_true",
                         help="输出所有的配置列表")
     parser.add_argument("key", nargs="?",
@@ -98,24 +151,26 @@ def main():
         open(cfile,"w+").close()
 
     config = getConfig(cfile)
-    _format =  args.cfmt if args.fmt == "custome" else args.fmt
+
+    if (args.list_fmt):
+        printListFormat()
+        return
 
     if (args.list):
-        printList(config, _format)
+        printList(config, args.fmt)
         return
 
     if not args.key:
-        print("error message: 请输入配置标识(key)")
-        return
+        sys.stderr.write("error message: 请输入配置标识(key)")
+        exit(1)
 
     cfg = getConfigItem(config, args.key)
     if not cfg:
-        print("error message: 找不到 key:{},请从-l参数的列表选择".format(args.key))
-        return
+        sys.stderr.write("error message: 找不到 key:{},请从-l参数的列表选择".format(args.key))
+        exit(1)
 
-    fmt = getFormat(_format or "mysql", cfg)
+    fmt = getFormat(args.fmt or cfg.get("type") or "list", cfg)
     print(fmt.format(**cfg))
-
 
 if __name__ == "__main__":
     main()
