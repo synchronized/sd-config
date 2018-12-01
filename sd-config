@@ -78,6 +78,9 @@ def sdcf_format_list(cfg):
         flist.append("/{database}")
     return "".join(flist)
 
+def sdcf_format_l(cfg):
+    return "{key}"
+
 def getFormat(fmt, cfg):
     formatMap = {
         "host": sdcf_format_host,
@@ -92,6 +95,7 @@ def getFormat(fmt, cfg):
         "mongo": sdcf_format_mongo,
         "ftp": sdcf_format_ftp,
         "list": sdcf_format_list,
+        "l": sdcf_format_l,
     }
     result = fmt
     if formatMap.has_key(fmt):
@@ -111,7 +115,7 @@ def printList(config, fmttype):
     if config:
         for keyname in config.keys():
             cfg = getConfigItem(config, keyname)
-            fmt = getFormat(fmttype or "list", cfg)
+            fmt = getFormat(fmttype, cfg)
             print(fmt.format(**cfg))
 
 def printListFormat():
@@ -146,6 +150,8 @@ def main():
                         help="输出支持的格式")
     parser.add_argument("-l", "--list", action="store_true",
                         help="输出所有的配置列表")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="输出更多信息")
     parser.add_argument("key", nargs="?",
                         help="配置的标识")
 
@@ -163,7 +169,10 @@ def main():
         return
 
     if (args.list):
-        printList(config, args.fmt)
+        default_format = "l"
+        if args.verbose:
+            default_format = "list"
+        printList(config, args.fmt or default_format)
         return
 
     if not args.key:
