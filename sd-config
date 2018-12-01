@@ -65,9 +65,15 @@ def sdcf_format_ftp(cfg):
     return "ftp://{user}:{password}@{host}:{port}"
 
 def sdcf_format_list(cfg):
-    flist = ["{key:<25} -- ", "{user}@{host}:{port}"]
+    flist = ["{key:<30} -- "]
+    if (cfg.get("user")):
+        flist.append("{user}@")
     if (cfg.get("type")):
-        flist.insert(1, "[{type}]")
+        flist.append("[{type}]")
+    if (cfg.get("host")):
+        flist.append("{host}")
+    if (cfg.get("port")):
+        flist.append(":{port}")
     if (cfg.get("database")):
         flist.append("/{database}")
     return "".join(flist)
