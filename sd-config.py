@@ -221,7 +221,8 @@ class SdConfigFormaterRDesktop:
     def getFormat(self, cfg):
         return "{host}:{port} -u {user} -p {password}"
     def getDesc(self):
-        return "MongoDB shell: --host {host}:{port}[/{database}] [--authenticationDatabase={authenticationDatabase}]"
+        return "远程桌面(rdesktop): {host}:{port} -u {user} -p {password}"
+
 
 class SdConfigFormaterLongList:
     def getFormat(self, cfg):
