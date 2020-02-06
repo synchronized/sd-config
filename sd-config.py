@@ -41,6 +41,7 @@ class SdConfig:
             "rediscli":  SdConfigFormaterRedisCli(),
             "mongo":     SdConfigFormaterMongo(),
             "ftp":       SdConfigFormaterFtp(),
+            "rdesktop":  SdConfigFormaterRDesktop(),
             "list":      SdConfigFormaterLongList(),
             "l":         SdConfigFormaterShortList(),
         }
@@ -81,6 +82,7 @@ class SdConfig:
             "rediscli": "redis终端客户端: -h {host} -p {port} -a {password}",
             "mongo": "MongoDB shell: --host {host}:{port}[/{database}] [--authenticationDatabase={authenticationDatabase}]",
             "ftp": "ftp链接链接字符串: ftp://{user}:{password}@{host}:{port}",
+            "rdesktop": "远程桌面(rdesktop): {host}:{port} -u {user} -p {password}",
         }
 
         result = []
@@ -214,6 +216,12 @@ class SdConfigFormaterFtp:
         return "ftp://{user}:{password}@{host}:{port}"
     def getDesc(self):
         return "ftp链接链接字符串: ftp://{user}:{password}@{host}:{port}"
+
+class SdConfigFormaterRDesktop:
+    def getFormat(self, cfg):
+        return "{host}:{port} -u {user} -p {password}"
+    def getDesc(self):
+        return "MongoDB shell: --host {host}:{port}[/{database}] [--authenticationDatabase={authenticationDatabase}]"
 
 class SdConfigFormaterLongList:
     def getFormat(self, cfg):
