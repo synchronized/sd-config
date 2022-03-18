@@ -12,8 +12,6 @@ import sys
 import os
 
 from abc import ABCMeta, abstractmethod
-reload(sys)
-sys.setdefaultencoding('utf8')
 
 class SdConfigInvalidKey(RuntimeError):
     def __init__(self, arg):
@@ -282,10 +280,10 @@ def main():
 
     try:
         print(sdConfig.general(args.key))
-    except SdConfigInvalidKey, key:
+    except SdConfigInvalidKey as key:
         sys.stderr.write("error message: 请输入配置标识(key)")
         exit(1)
-    except SdConfigKeyNotFound, key:
+    except SdConfigKeyNotFound as key:
         sys.stderr.write("error message: 找不到 key:{},请从-l参数的列表选择".format(key))
         exit(1)
 
